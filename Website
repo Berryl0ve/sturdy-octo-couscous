@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PokéScanner Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
+        .hidden { display: none; }
+        .active-tab { color: #facc15; }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen">
+
+    <div class="w-full max-w-md bg-slate-950 min-h-screen flex flex-col shadow-2xl relative overflow-hidden">
+        
+        <header class="pt-6 pb-4 px-6 bg-slate-900 border-b border-slate-800 flex items-center shrink-0">
+            <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-lg flex items-center justify-center mr-3">
+                <i data-lucide="search" class="w-4 h-4 text-slate-900"></i>
+            </div>
+            <h1 class="text-xl font-black tracking-tight">PokéScanner Pro</h1>
+        </header>
+
+        <main id="main-content" class="flex-1 overflow-y-auto p-6">
+            <div id="state-idle" class="flex flex-col items-center justify-center h-full space-y-6 text-center">
+                <div class="space-y-2">
+                    <h2 class="text-2xl font-bold">Check Value & Wear</h2>
+                    <p class="text-slate-400 text-sm px-4">Scan your card to get its market value adjusted by AI condition grading.</p>
+                </div>
+                
+                <button onclick="startScanner()" class="w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold rounded-2xl flex items-center justify-center text-lg shadow-xl shadow-yellow-500/10">
+                    <i data-lucide="camera" class="mr-3"></i> Start Scanner
+                </button>
+
+                <div class="text-slate-600 text-xs uppercase font-bold">or</div>
+
+                <label class="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl flex items-center justify-center text-lg cursor-pointer">
+                    <i data-lucide="image" class="mr-3"></i> Upload Photo
+                    <input type="file" accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+                </label>
+            </div>
+
+            <div id="state-analyzing" class="hidden flex flex-col items-center justify-center h-full space-y-4">
+                <div class="animate-spin text-yellow-500">
+                    <i data-lucide="loader-2" class="w-12 h-12"></i>
+                </div>
+                <h2 class="text-xl font-bold">Analyzing Card...</h2>
+                <p class="text-slate-400 text-sm">Evaluating edges and surface wear.</p>
+            </div>
+
+            <div id="state-result" class="hidden space-y-6 pb-10">
+                <div id="result-header" class="flex items-start space-x-4">
+                    <img id="card-img" src="" class="w-24 h-32 rounded-lg object-cover border border-slate-700 shadow-lg">
+                    <div>
+                        <h2 id="card-name" class="text-xl font-black">--</h2>
+                        <p id="card-set" class="text-slate-400 text-sm">--</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5">
+                    <div class="flex justify-between items-end mb-4 border-b border-slate-800 pb-4">
+                        <div>
+                            <span class="text-xs font-bold text-slate-500 uppercase">Adjusted Value</span>
+                            <div id="price-adjusted" class="text-3xl font-black text-emerald-400">$0.00</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-xs font-bold text-slate-500 uppercase">Market Base</span>
+                            <div id="price-base" class="text-lg font-bold text-slate-300">$0.00</div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-800/50 rounded-xl p-4">
+                        <div class="flex items-center text-yellow-500 font-bold text-sm mb-1">
+                            <i data-lucide="sparkles" class="w-4 h-4 mr-2"></i> AI Grade: <span id="card-condition" class="ml-1">--</span>
+                        </div>
+                        <p id="condition-reason" class="text-slate-400 text-xs italic leading-relaxed">--</p>
+                    </div>
+                </div>
+
+                <button onclick="resetApp()" class="w-full py-3 bg-slate-800 text-white font-bold rounded-xl border border-slate-700">
+                    Scan Another
+                </button>
+            </div>
+        </main>
+
+        <div id="camera-container" class="hidden absolute inset-0 bg-black z-50">
+            <video id="video" autoplay playsinline class="w-full h-full object-cover"></video>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div class="w-64 h-80 border-2 border-yellow-400/50 rounded-xl"></div>
+                <div class="mt-4 bg-black/60 px-4 py-1 rounded-full text-xs">Align card within frame</div>
+            </div>
+            <div class="absolute bottom-10 left-0 right-0 flex justify-center">
+                <button onclick="capturePhoto()" class="w-20 h-20 bg-white rounded-full border-4 border-slate-400 active:scale-90 transition-transform"></button>
+            </div>
+            <button onclick="stopScanner()" class="absolute top-6 right-6 text-white bg-black/40 p-2 rounded-full">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+
+        <nav class="bg-slate-900 border-t border-slate-800 p-4 flex justify-around shrink-0">
+            <div class="flex flex-col items-center active-tab">
+                <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold mt-1">Value</span>
+            </div>
+            <div class="flex flex-col items-center text-slate-500">
+                <i data-lucide="shield-check" class="w-6 h-6"></i>
+                <span class="text-[10px] font-bold mt-1">Auth</span>
+            </div>
+        </nav>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // Paste your key here for it to work!
+        const GEMINI_API_KEY = "AIzaSyAGzND67UwnRfCeGZyU9KInmZfIj_2ZrvU";
+"; 
+
+        // UI Elements
+        const states = {
+            idle: document.getElementById('state-idle'),
+            analyzing: document.getElementById('state-analyzing'),
+            result: document.getElementById('state-result')
+        };
+        const video = document.getElementById('video');
+        const cameraContainer = document.getElementById('camera-container');
+
+        let stream = null;
+
+        // Start Camera
+        async function startScanner() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                cameraContainer.classList.remove('hidden');
+            } catch (err) {
+                alert("Camera error: " + err.message);
+            }
+        }
+
+        function stopScanner() {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            cameraContainer.classList.add('hidden');
+        }
+
+        // Handle Capture
+        function capturePhoto() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const base64 = canvas.toDataURL('image/jpeg', 0.8);
+            stopScanner();
+            processImage(base64);
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => processImage(ev.target.result);
+            reader.readAsDataURL(file);
+        }
+
+        async function processImage(base64) {
+            showState('analyzing');
+            
+            try {
+                // 1. Ask Gemini to identify and grade
+                const aiData = await callGemini(base64);
+                
+                // 2. Display Result
+                document.getElementById('card-img').src = base64;
+                document.getElementById('card-name').innerText = aiData.name;
+                document.getElementById('card-set').innerText = "Set #" + aiData.number;
+                document.getElementById('card-condition').innerText = aiData.condition;
+                document.getElementById('condition-reason').innerText = aiData.conditionReason;
+                
+                // 3. Mock Pricing (in a real app, this would hit TCGPlayer)
+                const baseVal = aiData.estimatedValue || 25.00;
+                const multiplier = getMultiplier(aiData.condition);
+                
+                document.getElementById('price-base').innerText = "$" + baseVal.toFixed(2);
+                document.getElementById('price-adjusted').innerText = "$" + (baseVal * multiplier).toFixed(2);
+
+                showState('result');
+            } catch (err) {
+                alert("Error: " + err.message);
+                showState('idle');
+            }
+        }
+
+        async function callGemini(base64Image) {
+            if (!GEMINI_API_KEY) {
+                alert("Missing API Key! Open index.html and add it around line 20.");
+                throw new Error("Missing Key");
+            }
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=${GEMINI_API_KEY}`;
+            const base64Data = base64Image.split(',')[1];
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: "Identify this Pokemon card. Return JSON with keys: name, number, condition (Near Mint, Lightly Played, Moderately Played, Heavily Played, or Damaged), conditionReason, estimatedValue (number)." },
+                            { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) throw new Error("Gemini API Error: " + response.status);
+            const json = await response.json();
+            const text = json.candidates[0].content.parts[0].text;
+            return JSON.parse(text.replace(/```json/g, '').replace(/```/g, ''));
+        }
+
+        function getMultiplier(cond) {
+            const m = { 'Near Mint': 1.0, 'Lightly Played': 0.8, 'Moderately Played': 0.6, 'Heavily Played': 0.4, 'Damaged': 0.2 };
+            return m[cond] || 1.0;
+        }
+
+        function showState(state) {
+            Object.values(states).forEach(s => s.classList.add('hidden'));
+            states[state].classList.remove('hidden');
+        }
+
+        function resetApp() {
+            showState('idle');
+        }
+
+        // Initialize Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
